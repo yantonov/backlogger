@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "command": "closed",
+  "tickets": [
+    {
+      "id": "gamma",
+      "status": "closed",
+      "title": "Gamma task",
+      "deps": [],
+      "archived": false
+    }
+  ]
+}

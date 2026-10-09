@@ -1,0 +1,13 @@
+# Compiled binary
+/target
+/bl
+/bl.exe
+
+# Test and coverage output
+*.out
+coverage.txt
+coverage.html
+*.test
+
+# Editor and OS noise
+.DS_Store

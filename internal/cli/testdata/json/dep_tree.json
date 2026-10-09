@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "command": "dep tree",
+  "root": "beta",
+  "full": false,
+  "lines": [
+    {
+      "id": "beta",
+      "depth": 0,
+      "unknown": false
+    },
+    {
+      "id": "alpha",
+      "depth": 1,
+      "unknown": false
+    }
+  ]
+}

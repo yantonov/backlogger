@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "command": "list",
+  "filter": {
+    "archived": true
+  },
+  "tickets": [
+    {
+      "id": "delta",
+      "status": "closed",
+      "title": "Delta task",
+      "deps": [],
+      "archived": true
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "command": "list",
+  "filter": {
+    "all": true
+  },
+  "tickets": [
+    {
+      "id": "beta",
+      "status": "open",
+      "title": "Beta task",
+      "deps": [
+        "alpha"
+      ],
+      "archived": false
+    },
+    {
+      "id": "alpha",
+      "status": "in_progress",
+      "title": "Alpha task",
+      "deps": [],
+      "archived": false
+    },
+    {
+      "id": "gamma",
+      "status": "closed",
+      "title": "Gamma task",
+      "deps": [],
+      "archived": false
+    },
+    {
+      "id": "delta",
+      "status": "closed",
+      "title": "Delta task",
+      "deps": [],
+      "archived": true
+    }
+  ]
+}

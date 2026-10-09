@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "command": "dep order",
+  "order": [
+    {
+      "position": 1,
+      "id": "alpha",
+      "status": "in_progress",
+      "title": "Alpha task",
+      "deps": [],
+      "archived": false
+    },
+    {
+      "position": 2,
+      "id": "beta",
+      "status": "open",
+      "title": "Beta task",
+      "deps": [
+        "alpha"
+      ],
+      "archived": false
+    }
+  ]
+}

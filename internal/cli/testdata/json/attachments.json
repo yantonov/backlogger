@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "command": "attachments",
+  "id": "alpha",
+  "entries": [
+    {
+      "suffix": "screenshot.png",
+      "present": true
+    }
+  ],
+  "orphans": []
+}

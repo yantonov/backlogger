@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "command": "blocked",
+  "tickets": [
+    {
+      "id": "beta",
+      "status": "open",
+      "title": "Beta task",
+      "deps": [
+        "alpha"
+      ],
+      "archived": false
+    }
+  ]
+}

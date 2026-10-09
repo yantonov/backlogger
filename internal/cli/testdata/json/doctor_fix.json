@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "command": "doctor fix",
+  "fixes": [],
+  "issues": [],
+  "errors": 0,
+  "warnings": 0,
+  "clean": true
+}

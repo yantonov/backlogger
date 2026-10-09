@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "command": "doctor",
+  "issues": [],
+  "errors": 0,
+  "warnings": 0,
+  "clean": true
+}
