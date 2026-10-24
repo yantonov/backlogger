@@ -1,15 +1,29 @@
-.PHONY: help setup build install compile test vet lint check
+.PHONY: help help-all setup build install compile test vet lint check
 
-# help prints the list of available targets.
+# help prints the list of available public targets.
 help:
-	@echo "setup         Install dev tools"
-	@echo "build         Build bl binary"
-	@echo "install       Build and install to ~/.local/bin"
-	@echo "compile       Type-check all packages"
-	@echo "test          Run tests"
-	@echo "vet           Run go vet"
-	@echo "lint          Run golangci-lint"
-	@echo "check         Vet, lint, and test"
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "  check    - Vet, lint, and test"
+	@echo "  build    - Build bl binary"
+	@echo "  install  - Build and install to ~/.local/bin"
+	@echo "  test     - Run tests"
+	@echo ""
+	@echo "Run 'make help-all' for the full list, including internal targets."
+
+# help-all prints every target, grouped by audience.
+help-all:
+	@echo "Public targets:"
+	@echo "  check    - Vet, lint, and test"
+	@echo "  build    - Build bl binary"
+	@echo "  install  - Build and install to ~/.local/bin"
+	@echo "  test     - Run tests"
+	@echo ""
+	@echo "Internal targets (typically called via check or build):"
+	@echo "  vet      - Run go vet"
+	@echo "  lint     - Run golangci-lint"
+	@echo "  compile  - Type-check all packages"
+	@echo "  setup    - Install dev tools"
 
 # VERSION is the git description when available, else "dev". It is embedded in
 # the binary so `bl version` reports a real build identity; a plain
