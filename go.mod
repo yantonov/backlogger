@@ -1,6 +1,6 @@
 module github.com/yantonov/backlogger
 
-go 1.26.1
+go 1.26.10
 
 require (
 	github.com/gofrs/flock v0.13.1
