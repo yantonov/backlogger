@@ -85,6 +85,7 @@ and crash tests keep one randomized or racing When per test.
 | Second canonicalize pass is a no-op | `internal/frontmatter/roundtrip_test.go` | `TestCanonicalize_CanonicalFixture_IsFixedPoint` |
 | Canonical field order and sorted lists | `internal/frontmatter/roundtrip_test.go` | `TestCanonicalize_GoodFixture_EmitsCanonicalFrontmatter` |
 | Canonical timestamp form | `internal/model/ticket_test.go` | `TestFormatTimestamp_UTCTime_RendersCanonicalForm` |
+| Body title rule (`# ` only; `## ` and deeper are prose) | `internal/model/title_test.go` | `TestTitle`, `TestTitleLine` |
 
 ## 2. Frontmatter subset tests (spec section 8.2)
 

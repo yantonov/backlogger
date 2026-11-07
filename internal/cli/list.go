@@ -154,7 +154,7 @@ func archivedEntries(paths *store.Paths) ([]index.Entry, error) {
 		out = append(out, index.Entry{
 			ID:         meta.ID,
 			Glyph:      "x",
-			Title:      bodyTitle(meta.Body),
+			Title:      model.Title(meta.Body),
 			Deps:       append([]string(nil), meta.Ticket.Deps...),
 			ArchivedAt: index.ArchivedMarker,
 		})
@@ -194,7 +194,7 @@ func isActiveStatus(s model.Status) bool {
 // JSON show path (which reads a detail file); navigation responses use the
 // entry's title directly.
 func titleOf(meta *store.TicketMeta) string {
-	if t := bodyTitle(meta.Body); t != "" {
+	if t := model.Title(meta.Body); t != "" {
 		return t
 	}
 	return meta.ID

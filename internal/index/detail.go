@@ -36,7 +36,7 @@ func detailFromMeta(meta *store.TicketMeta) *Detail {
 		Created:    meta.Ticket.Created,
 		Deps:       append([]string(nil), meta.Ticket.Deps...),
 		ArchivedAt: meta.Ticket.Archived,
-		Title:      firstHeading(meta.Body),
+		Title:      model.Title(meta.Body),
 	}
 }
 

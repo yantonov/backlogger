@@ -2,6 +2,8 @@ package cli
 
 import (
 	"strings"
+
+	"github.com/yantonov/backlogger/internal/model"
 )
 
 // Document body layout.
@@ -34,33 +36,12 @@ func writeProse(b *strings.Builder, text string) {
 	b.WriteString("\n")
 }
 
-// bodyTitle returns the text of the body's title heading, or "". Only a
-// single-`#` heading is the title; a `## ` line is prose (spec 3.2).
-func bodyTitle(body []byte) string {
-	for _, line := range splitLines(body) {
-		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "# ") {
-			continue
-		}
-		if text := strings.TrimSpace(strings.Trim(trimmed, "#")); text != "" {
-			return text
-		}
-	}
-	return ""
-}
-
 // setBodyTitle replaces the title heading with `# title`, or prepends one when
 // the body has no title heading. Other content is preserved verbatim.
 func setBodyTitle(body []byte, title string) []byte {
 	lines := splitLines(body)
-	heading := -1
-	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "# ") {
-			heading = i
-			break
-		}
-	}
 	replacement := "# " + title
+	heading := model.TitleLine(body)
 	if heading < 0 {
 		out := []string{replacement}
 		out = append(out, lines...)
@@ -70,25 +51,17 @@ func setBodyTitle(body []byte, title string) []byte {
 	return joinLines(lines)
 }
 
-// proseStart returns the line index where the description begins: the line
-// after the body's title heading, or 0 when the body has no heading. The title
-// is the only structure the tracker reads out of a body, so everything after it
-// is prose (spec 3.2).
-func proseStart(lines []string) int {
-	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "# ") {
-			return i + 1
-		}
-	}
-	return 0
-}
-
 // setDescription replaces the whole description verbatim, keeping the title
 // heading. An empty text removes the description. The payload is never scanned
 // for headings, so any `## ` line in it is stored as text.
 func setDescription(body []byte, text string) []byte {
 	lines := splitLines(body)
-	start := proseStart(lines)
+	// Prose starts on the line after the title heading, or at the top when the
+	// body has none (spec 3.2).
+	start := 0
+	if heading := model.TitleLine(body); heading >= 0 {
+		start = heading + 1
+	}
 	out := append([]string(nil), lines[:start]...)
 	if strings.TrimSpace(text) != "" {
 		out = append(out, "", strings.TrimRight(text, "\n"))
@@ -108,7 +81,8 @@ func appendProse(body []byte, text string) []byte {
 }
 
 // splitLines splits body into lines, dropping a single trailing newline so the
-// result round-trips through joinLines. A CR is trimmed per line.
+// result round-trips through joinLines. A CR is trimmed per line, so the result
+// matches the line indexes model.TitleLine reports.
 func splitLines(body []byte) []string {
 	s := string(body)
 	s = strings.TrimSuffix(s, "\n")
@@ -134,7 +108,7 @@ func joinLines(lines []string) []byte {
 // ensureHeading guarantees the body starts with an ATX heading. It is used
 // after edit operations that might otherwise leave a headingless body.
 func ensureHeading(body []byte, id string) []byte {
-	if bodyTitle(body) != "" {
+	if model.Title(body) != "" {
 		return body
 	}
 	return setBodyTitle(body, id)

@@ -221,24 +221,6 @@ func GlyphFor(s model.Status) string {
 	}
 }
 
-// firstHeading returns the text of the body's title heading: the first line
-// that starts with a single `#`. A deeper heading (`## `) is prose the author
-// wrote, not the title, so it is skipped: only `# ` delimits the title (spec 3.2).
-func firstHeading(body []byte) string {
-	for _, raw := range strings.Split(string(body), "\n") {
-		line := strings.TrimSuffix(raw, "\r")
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "# ") {
-			continue
-		}
-		text := strings.TrimSpace(strings.Trim(line, "#"))
-		if text != "" {
-			return text
-		}
-	}
-	return ""
-}
-
 // RenderString is Render as a string, for callers that want the whole index
 // body as text.
 func RenderString(details []*Detail) string {

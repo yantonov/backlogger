@@ -3,6 +3,8 @@ package cli
 import (
 	"strings"
 	"testing"
+
+	"github.com/yantonov/backlogger/internal/model"
 )
 
 // The body-editor tests cover the prose model: the body is the title heading
@@ -63,7 +65,7 @@ func TestAppendProse_HeadingInPayload_IsStoredVerbatim(t *testing.T) {
 func TestSetBodyTitle_ExistingHeading_ReplacesItAndKeepsContent(t *testing.T) {
 	out := setBodyTitle([]byte("# Old\n\nprose\nx\n"), "New")
 
-	if bodyTitle(out) != "New" {
+	if model.Title(out) != "New" {
 		t.Fatalf("title not replaced: %q", out)
 	}
 	if !strings.Contains(string(out), "prose") {
@@ -74,7 +76,7 @@ func TestSetBodyTitle_ExistingHeading_ReplacesItAndKeepsContent(t *testing.T) {
 func TestSetBodyTitle_NoHeading_PrependsItAndKeepsContent(t *testing.T) {
 	out := setBodyTitle([]byte("plain paragraph\n"), "Fresh")
 
-	if bodyTitle(out) != "Fresh" {
+	if model.Title(out) != "Fresh" {
 		t.Fatalf("heading not prepended: %q", out)
 	}
 	if !strings.Contains(string(out), "plain paragraph") {
