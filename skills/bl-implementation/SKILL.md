@@ -57,6 +57,10 @@ That sequence keeps the history linear.
    - Write tests for all new logic.
    - Write each comment to give the reason, not to restate the code.
 
+   Before you spawn, print one line: the ticket, the agent and model, and that
+   the session now waits on them. A delegation that runs for minutes reads as a
+   hang when the human sees no line first.
+
    Done when the subagent exits with the ticket changes in the worktree.
 
 5. **Verify.** Run the project gate. Where the project defines one, it is
@@ -76,9 +80,20 @@ That sequence keeps the history linear.
    Done when `git log -1` shows that message and `git status` is clean.
 
 7. **Close.** Run `bl done <id>`. For a partly finished ticket, leave it
-   `started` and record the rest: `bl edit <id> --note "…"`. Then return to
-   step 1.
+   `started` and record the rest: `bl edit <id> --note "…"`.
    Done when the ticket state and the branch agree.
+
+8. **Report.** Print one line for the human as the ticket closes, then return to
+   step 1. A ticket is the unit of progress, so this line fires on each close and
+   nowhere finer. It is the heartbeat that shows the run is alive, not the
+   end-of-run report.
+
+       [<done>/<total>] <id> closed · <sha> · gate <green|red> · next: <id>
+
+   When the ticket stays `started`, close the same line with the remaining work
+   in one sentence. Print the line on a red gate too: a stalled ticket is the one
+   the human needs to see early.
+   Done when the line carries all five fields.
 
 The commits stay local. Push and review come after the slice.
 
@@ -86,7 +101,14 @@ The commits stay local. Push and review come after the slice.
 
 The run ends when `bl available` holds no in-scope ticket. Report one local
 branch and one commit per ticket, `.tickets/` and `backlog.md` in sync, and each
-ticket left `started` with the reason.
+ticket left `started` with the reason. Keep every report to the step 8 line: the
+id, the commit, the gate state, and the next id.
+
+A slice of more than five tickets also reports at each slice boundary: when a
+root of the dependency tree finishes, and before work the human may want to
+redirect, such as a large refactor, a schema change, or any item on the escalate
+list. The per-ticket line is the heartbeat. The boundary report is the place the
+human steers.
 
 ## Escalate to human (stop and ask)
 
