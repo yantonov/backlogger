@@ -111,7 +111,7 @@ That sequence keeps the history linear.
    Done when `git log -1` shows that message and `git status` is clean.
 
 7. **Close.** Run `bl done <id>`. For a partly finished ticket, leave it
-   `started` and record the rest: `bl edit <id> --note "…"`.
+   `started` and record the rest: `bl edit <id> --append "…"`.
    Done when the ticket state and the branch agree.
 
 8. **Report.** Print one line for the human as the ticket closes, then return to

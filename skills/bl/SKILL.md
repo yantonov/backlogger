@@ -24,15 +24,19 @@ writers.
    - On exit ≠ 0, the ticket moved under you. Re-run `bl available` and claim
      what is there now. Never retry blindly and never write the file to force it.
 3. **Read.** Run `bl show <id>` (`--json` when you need structured output).
-   Done when you understand the description, notes, and dependencies.
+   Done when you understand the description and dependencies. The body is one
+   prose block; only the first `# ` heading is structural.
 4. **Do the work.**
 5. **Close.** Run `bl done <id>` when finished. If you cannot finish, leave the
-   ticket `started` and record what remains: `bl edit <id> --note "…"`.
+   ticket `started` and record what remains: `bl edit <id> --append "…"`.
 
 ## Filing work
 
 - `bl add "Title"` returns the generated ID. Priority is `-p 0` (highest)
   through `4`; default `2`.
+- `bl add "Title" -d "…"` writes the description, `bl edit <id> -d "…"`
+  replaces it, and `--append` adds to it. All three store the text verbatim:
+  `## `, `### `, lists, and fences are just prose, so write Markdown freely.
 - File discovered work as its own ticket instead of holding it in your head.
 
 ## Relating tickets

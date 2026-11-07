@@ -5,58 +5,68 @@ import (
 	"testing"
 )
 
-// The section-editor tests cover setSection: replace, append, and remove.
+// The body-editor tests cover the prose model: the body is the title heading
+// plus one opaque block, so no payload is ever scanned for headings.
 
-func descAndNotes() []byte {
-	return newBody("Title", []bodySection{
-		{Name: sectionDescription, Text: "old desc"},
-		{Name: sectionNotes, Text: "old note"},
-	})
+func descBody() []byte {
+	return newBody("Title", "old desc")
 }
 
-func TestSetSection_Replace_ReplacesOnlyTargetSection(t *testing.T) {
-	body := descAndNotes()
+func TestSetDescription_ReplacesWholeProseBlock(t *testing.T) {
+	body := descBody()
 
-	body = setSection(body, sectionDescription, "new desc", false)
+	body = setDescription(body, "new desc")
 
-	if got := sectionText(body, sectionDescription); got != "new desc" {
-		t.Fatalf("replace: got %q", got)
-	}
-	if got := sectionText(body, sectionNotes); got != "old note" {
-		t.Fatalf("unrelated section changed: %q", got)
+	if got := strings.TrimSpace(string(body)); got != "# Title\n\nnew desc" {
+		t.Fatalf("replace: %q", got)
 	}
 }
 
-func TestSetSection_Append_AddsBlockAfterExistingText(t *testing.T) {
-	body := descAndNotes()
+func TestSetDescription_HeadingInPayload_IsStoredVerbatim(t *testing.T) {
+	body := setDescription(descBody(), "part one\n## Part 1\npart two")
 
-	body = setSection(body, sectionNotes, "first", true)
+	want := "# Title\n\npart one\n## Part 1\npart two\n"
+	if string(body) != want {
+		t.Fatalf("payload not verbatim:\n got %q\nwant %q", body, want)
+	}
 
-	if got := sectionText(body, sectionNotes); got != "old note\n\nfirst" {
-		t.Fatalf("append: got %q", got)
+	// A second identical edit must not grow the body.
+	if again := setDescription(body, "part one\n## Part 1\npart two"); string(again) != want {
+		t.Fatalf("edit is not idempotent:\n got %q\nwant %q", again, want)
 	}
 }
 
-func TestSetSection_EmptyText_RemovesSectionAndHeading(t *testing.T) {
-	body := descAndNotes()
+func TestSetDescription_EmptyText_RemovesProseKeepsTitle(t *testing.T) {
+	body := setDescription(descBody(), "")
 
-	body = setSection(body, sectionNotes, "", false)
-
-	if sectionText(body, sectionNotes) != "" {
-		t.Fatalf("remove failed: %q", body)
+	if got := string(body); got != "# Title\n" {
+		t.Fatalf("expected title only, got %q", got)
 	}
-	if got := strings.Count(string(body), "## "); got != 1 {
-		t.Fatalf("expected 1 heading after removal, got %d: %q", got, body)
+}
+
+func TestAppendProse_KeepsExistingProseAndAddsParagraph(t *testing.T) {
+	body := appendProse(descBody(), "more")
+
+	if got := string(body); got != "# Title\n\nold desc\n\nmore\n" {
+		t.Fatalf("append: %q", got)
+	}
+}
+
+func TestAppendProse_HeadingInPayload_IsStoredVerbatim(t *testing.T) {
+	body := appendProse(descBody(), "see:\n## Detail\nx")
+
+	if got := string(body); got != "# Title\n\nold desc\n\nsee:\n## Detail\nx\n" {
+		t.Fatalf("append not verbatim: %q", got)
 	}
 }
 
 func TestSetBodyTitle_ExistingHeading_ReplacesItAndKeepsContent(t *testing.T) {
-	out := setBodyTitle([]byte("# Old\n\n## Notes\nx\n"), "New")
+	out := setBodyTitle([]byte("# Old\n\nprose\nx\n"), "New")
 
 	if bodyTitle(out) != "New" {
 		t.Fatalf("title not replaced: %q", out)
 	}
-	if !strings.Contains(string(out), "## Notes") {
+	if !strings.Contains(string(out), "prose") {
 		t.Fatalf("content lost: %q", out)
 	}
 }
@@ -78,10 +88,10 @@ func TestSetBodyTitle_NoHeading_PrependsItAndKeepsContent(t *testing.T) {
 func TestFlagSet_InterleavedFlagsAndPositionals_ParsesValuesAndTracksSet(t *testing.T) {
 	fs := newFlagSet()
 	prio := fs.Int(2, "-p", "--priority")
-	ref := fs.String("", "--notes")
+	ref := fs.String("", "--append")
 	all := fs.Bool("--all")
 
-	err := fs.Parse([]string{"Title", "-p", "1", "--notes=first", "--all"})
+	err := fs.Parse([]string{"Title", "-p", "1", "--append=first", "--all"})
 
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -92,7 +102,7 @@ func TestFlagSet_InterleavedFlagsAndPositionals_ParsesValuesAndTracksSet(t *test
 	if *prio != 1 || *ref != "first" || !*all {
 		t.Fatalf("values = %d %q %v", *prio, *ref, *all)
 	}
-	if !fs.Set("-p") || !fs.Set("--notes") || !fs.Set("--all") {
+	if !fs.Set("-p") || !fs.Set("--append") || !fs.Set("--all") {
 		t.Fatalf("Set tracking failed")
 	}
 	if fs.Set("--description") {
@@ -109,12 +119,12 @@ func TestFlagSet_BadInput_FailsToParse(t *testing.T) {
 	}{
 		{"non_integer", []string{"-p", "notint"}},
 		{"unknown_flag", []string{"--nope"}},
-		{"missing_value", []string{"--notes"}},
+		{"missing_value", []string{"--append"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fs := newFlagSet()
 			fs.Int(2, "-p", "--priority")
-			fs.String("", "--notes")
+			fs.String("", "--append")
 
 			err := fs.Parse(tc.args)
 
@@ -137,13 +147,4 @@ func TestFlagSet_DoubleDash_TreatsRestAsPositionals(t *testing.T) {
 	if got := fs.positionals(); len(got) != 2 || got[0] != "-p" {
 		t.Fatalf("positionals = %v", got)
 	}
-}
-
-// sectionText returns a section's prose (without the heading) for assertions.
-func sectionText(body []byte, name string) string {
-	start, end := sectionBounds(body, name)
-	if start < 0 || start+1 > end {
-		return ""
-	}
-	return strings.TrimSpace(strings.Join(splitLines(body)[start+1:end], "\n"))
 }

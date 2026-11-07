@@ -127,8 +127,8 @@ never scanned on the hot path (see §3.5).
 
 ### 3.2 `.tickets/<id>.md` — the detail
 
-- Frontmatter for structured fields, Markdown body for prose (description,
-  notes) — borrowed from `ticket`. The frontmatter
+- Frontmatter for structured fields, Markdown body for prose — borrowed from
+  `ticket`. The frontmatter
   uses a **frozen, flat, YAML-compatible subset** (§8.2); it is valid YAML but
   the parser accepts only that subset and rejects everything else:
 
@@ -145,18 +145,30 @@ never scanned on the hot path (see §3.5).
   ---
   # Add login flow
 
-  ## Description
-  ...
-  ## Notes
-  **2026-10-08T11:40:00Z**
-  ...
+  Free prose. Headings below the title, lists, and fences are the author's own
+  Markdown and carry no meaning for the tracker.
   ```
 
   (`closed-at` and `archived` are emitted only when set; see
   §5.3. The writer emits canonical field order and no comments.)
 
-- **The title is the body's first ATX heading, not a frontmatter field.** `add`
-  writes the title as `# <title>`; `edit --title` rewrites it in place. `f`
+- **The body has exactly two parts: a title heading and one prose block.** The
+  title is the first ATX heading; everything after it is the description. The
+  tracker reads no structure out of the description and never parses headings
+  inside it, so `## `, `### `, lists, and fences are all just text and are
+  stored verbatim. This is the *only* body structure, and it exists solely so
+  `f` can derive the display title (§3.1).
+- **Body writes are total and verbatim.** `add -d` and `edit -d` replace the
+  prose block, `edit --append` adds a paragraph to it, `edit --title` replaces
+  the heading, and `edit --body` replaces the whole body (a body left without a
+  title heading gets one from its ID). Nothing is scanned, so a write either
+  replaces or extends exactly what the flag names: the *replacing* writes
+  (`-d`, `--title`, `--body`) are idempotent — the same write twice leaves the
+  same bytes — while `--append`, by definition, adds its text once per call.
+  There are no section flags and no payload restrictions.
+
+- **The title is the body's first ATX heading, not a frontmatter field.**
+  `add` writes the title as `# <title>`; `edit --title` rewrites it in place. `f`
   derives the display title from that heading, so no `title` key exists and the
   index stays a pure function of the detail bytes.
 
@@ -172,7 +184,7 @@ never scanned on the hot path (see §3.5).
   is required for index↔detail drift.
 - Rationale: keeps the overview file cheap to read and git-diffable while giving
   each ticket a rich, independent, self-describing file; avoids rewriting the
-  whole index body on every note edit.
+  whole index on every body edit.
 
 ### 3.3 Why not alternatives
 
@@ -537,7 +549,8 @@ Core
   bl list [--status S] [--archived] [--all] [--json] [-v|-vv]
   bl add <title> [--id ID] [-d desc] [-p prio]
   bl show <id> [--attachments] [--json]
-  bl edit <id> [fields...]
+  bl edit <id> [-p prio] [--title TEXT] [-d TEXT] [--append TEXT]
+                [--body TEXT]
   bl start <id>            Atomically claim (open -> in progress)
   bl done <id> / reopen <id>
 
@@ -774,7 +787,7 @@ From **backlogger**:
 - Multi-process tests; honest "no ownership/lease" boundary.
 
 From **ticket**:
-- One file per ticket with YAML frontmatter + Markdown prose sections.
+- One file per ticket with YAML frontmatter + a Markdown prose body.
 - Metadata (priority, created/updated).
 - Dependencies (`deps`), `started`/`blocked`, `dep tree`/`cycle`.
 - Partial-ID matching; single static binary, distributed via GitHub.

@@ -209,7 +209,7 @@ func TestShowJSON_EditedDetail_ChangesHash(t *testing.T) {
 	c := newCLI(t, t.TempDir())
 	c.must(t, "add", "Hash me", "--id", "hashme")
 	before := showHash(t, c, "hashme")
-	c.must(t, "edit", "hashme", "--note", "changed")
+	c.must(t, "edit", "hashme", "--append", "changed")
 
 	after := showHash(t, c, "hashme")
 

@@ -227,7 +227,8 @@ verbs call the same store-level primitives tested here.
 | CLI integration: usage/dispatch | `test/cli_test.go` | `TestNoArgs_PrintsUsage`, `TestHelp_PrintsUsage`, `TestUnknownCommand_FailsWithUsageOnStderr` |
 | CLI in-process: no-args usage and unknown command | `internal/cli/app_test.go` | `TestAppRun_NoArgs_PrintsUsage`, `TestAppRun_UnknownCommand_ExitsUsageWithMessage` |
 | CLI: timestamps come from the injected clock; a transition bumps only updated | `internal/cli/app_test.go` | `TestAdd_InjectedClock_StampsCreatedAndUpdatedWithIt`, `TestStart_AdvancedClock_BumpsUpdatedAndKeepsCreated` |
-| CLI integration: add/list/show/edit | `test/cli_test.go` | `TestAdd_FreshDir_CreatesTicketsAndIndex`, `TestList_MixedPriorities_SortsByPriority`, `TestShow_GeneratedID_PrintsTicket`, `TestShow_UppercasePartialID_MatchesFullID`, `TestEdit_PriorityAndNote_UpdatesDetail`, `TestEdit_Priority_RegeneratesIndexOrder` |
+| Edit priority and append prose | `test/cli_test.go` | `TestEdit_PriorityAndAppend_UpdatesDetail` |
+| Description containing a `## ` line is stored verbatim and edit is idempotent | `test/cli_test.go` | `TestEdit_DescriptionWithHeading_IsStoredVerbatim` |
 | CLI integration: guarded transitions | `test/cli_test.go` | `TestStart_OpenTicket_BecomesInProgress`, `TestStart_InProgressTicket_FailsAndKeepsStatus`, `TestReopen_InProgressTicket_BecomesOpen`, `TestDone_OpenTicket_FailsAndKeepsStatus`, `TestDone_InProgressTicket_ClosesAndSetsClosedAt`, `TestDone_ClosedTicket_FailsAndKeepsStatus`, `TestReopen_ClosedTicket_BecomesOpenAndClearsClosedAt`, `TestReopen_OpenTicket_FailsAndKeepsStatus`, `TestStatus_ExistingTicket_FailsAsUnknownCommand` |
 | CLI integration: list filters (index-only, no -p) | `test/cli_test.go` | `TestList_Default_ShowsOnlyActive`, `TestList_StatusClosed_ShowsOnlyClosed`, `TestList_All_ShowsEveryTicket`, `TestList_PriorityFlag_FailsAsUnknownFlag`, `TestList_BogusStatus_Fails` |
 | CLI: list and views read backlog.md only; missing detail still flagged by doctor | `test/cli_test.go` | `TestViews_DetailDeleted_StillSucceed`, `TestListAll_DetailDeleted_StillListsTicket`, `TestDoctor_DetailDeleted_Fails` |
@@ -237,7 +238,7 @@ verbs call the same store-level primitives tested here.
 | Concurrency through the CLI | `test/cli_test.go` | `TestParallelStart_OpenTicket_ExactlyOneSucceeds` |
 | Missing `.tickets/` read vs write | `test/cli_test.go` | `TestNonAddCommands_MissingTickets_FailWithGuidanceAndCreateNothing`, `TestAdd_FreshDir_CreatesTicketsAndIndex` |
 | Mutating command sweeps a stale temp file | `test/cli_test.go` | `TestAdd_StaleTempFile_SweepsIt` |
-| Body section editor | `internal/cli/render_test.go` | `TestSetSection_Replace_ReplacesOnlyTargetSection`, `TestSetSection_Append_AddsBlockAfterExistingText`, `TestSetSection_EmptyText_RemovesSectionAndHeading`, `TestSetBodyTitle_ExistingHeading_ReplacesItAndKeepsContent`, `TestSetBodyTitle_NoHeading_PrependsItAndKeepsContent` |
+| Body editor (prose model, verbatim payloads) | `internal/cli/render_test.go` | `TestSetDescription_ReplacesWholeProseBlock`, `TestSetDescription_HeadingInPayload_IsStoredVerbatim`, `TestSetDescription_EmptyText_RemovesProseKeepsTitle`, `TestAppendProse_KeepsExistingProseAndAddsParagraph`, `TestAppendProse_HeadingInPayload_IsStoredVerbatim`, `TestSetBodyTitle_ExistingHeading_ReplacesItAndKeepsContent`, `TestSetBodyTitle_NoHeading_PrependsItAndKeepsContent` |
 | CLI flag parser | `internal/cli/render_test.go` | `TestFlagSet_InterleavedFlagsAndPositionals_ParsesValuesAndTracksSet`, `TestFlagSet_BadInput_FailsToParse`, `TestFlagSet_DoubleDash_TreatsRestAsPositionals` |
 
 ## 7. JSON output (spec section 7)

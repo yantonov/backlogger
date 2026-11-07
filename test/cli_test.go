@@ -97,18 +97,40 @@ func TestShow_UppercasePartialID_MatchesFullID(t *testing.T) {
 	}
 }
 
-func TestEdit_PriorityAndNote_UpdatesDetail(t *testing.T) {
+func TestEdit_PriorityAndAppend_UpdatesDetail(t *testing.T) {
 	dir := t.TempDir()
 	addOpen(t, dir, "flow")
 
-	mustRun(t, dir, "edit", "flow", "-p", "3", "--note", "waiting")
+	mustRun(t, dir, "edit", "flow", "-p", "3", "--append", "waiting")
 
 	show := showOf(t, dir, "flow")
 	if !strings.Contains(show, "priority: 3") {
 		t.Fatalf("priority not applied:\n%s", show)
 	}
-	if !strings.Contains(show, "## Notes\nwaiting") {
-		t.Fatalf("note not applied:\n%s", show)
+	if !strings.Contains(show, "waiting") {
+		t.Fatalf("appended text not applied:\n%s", show)
+	}
+}
+
+// TestEdit_DescriptionWithHeading_IsStoredVerbatim is the regression test for
+// the old section scanner: a `## ` line in a -d payload was treated as a
+// section boundary, so the tail escaped the description and every repeat of the
+// edit appended another copy.
+func TestEdit_DescriptionWithHeading_IsStoredVerbatim(t *testing.T) {
+	dir := t.TempDir()
+	addOpen(t, dir, "flow")
+
+	payload := "part one\n## Part 1\npart two"
+	mustRun(t, dir, "edit", "flow", "-d", payload)
+	first := showOf(t, dir, "flow")
+
+	if !strings.Contains(first, payload) {
+		t.Fatalf("payload not stored verbatim:\n%s", first)
+	}
+
+	mustRun(t, dir, "edit", "flow", "-d", payload)
+	if second := showOf(t, dir, "flow"); second != first {
+		t.Fatalf("repeated edit is not idempotent:\nfirst:\n%s\nsecond:\n%s", first, second)
 	}
 }
 

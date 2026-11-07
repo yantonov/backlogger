@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/yantonov/backlogger/internal/index"
 	"github.com/yantonov/backlogger/internal/model"
@@ -11,14 +10,14 @@ import (
 
 // cmdEdit implements `bl edit <id>`: it edits structured fields and/or the
 // Markdown body, last-writer-wins, preserving unknown frontmatter keys (the
-// frontmatter package already writes them back verbatim). Section flags replace
-// their section; --note appends to Notes.
+// frontmatter package already writes them back verbatim). The body is the title
+// heading plus one opaque prose block: -d replaces that block, --append adds a
+// paragraph to it, leading ---body replaces the whole body (spec 3.2).
 func (a *App) cmdEdit(args []string) int {
 	fs := newFlagSet()
 	priorityFlag := fs.Int(model.DefaultPriority, "-p", "--priority")
 	descFlag := fs.String("", "--description", "-d")
-	notesFlag := fs.String("", "--notes")
-	noteFlag := fs.String("", "--note")
+	appendFlag := fs.String("", "--append")
 	bodyFlag := fs.String("", "--body")
 	titleFlag := fs.String("", "--title")
 	if err := fs.Parse(args); err != nil {
@@ -38,10 +37,8 @@ func (a *App) cmdEdit(args []string) int {
 		body:        *bodyFlag,
 		setDesc:     fs.Set("--description"),
 		desc:        *descFlag,
-		setNotes:    fs.Set("--notes"),
-		notes:       *notesFlag,
-		setNote:     fs.Set("--note"),
-		note:        *noteFlag,
+		setAppend:   fs.Set("--append"),
+		appendText:  *appendFlag,
 	}
 	if !edit.any() {
 		return a.usageError("edit needs at least one field flag")
@@ -91,15 +88,13 @@ type editRequest struct {
 	body        string
 	setDesc     bool
 	desc        string
-	setNotes    bool
-	notes       string
-	setNote     bool
-	note        string
+	setAppend   bool
+	appendText  string
 }
 
 func (e editRequest) any() bool {
 	return e.setPriority || e.setTitle || e.setBody ||
-		e.setDesc || e.setNotes || e.setNote
+		e.setDesc || e.setAppend
 }
 
 // mutate applies the request to a ticket. It runs inside the lock, after the
@@ -115,21 +110,11 @@ func (e editRequest) mutate(meta *store.TicketMeta) error {
 		meta.Body = setBodyTitle(meta.Body, e.title)
 	}
 	if e.setDesc {
-		meta.Body = setSection(meta.Body, sectionDescription, e.desc, false)
+		meta.Body = setDescription(meta.Body, e.desc)
 	}
-	if e.setNotes {
-		meta.Body = setSection(meta.Body, sectionNotes, e.notes, false)
-	}
-	if e.setNote {
-		meta.Body = appendNote(meta.Body, e.note)
+	if e.setAppend {
+		meta.Body = appendProse(meta.Body, e.appendText)
 	}
 	meta.Body = ensureHeading(meta.Body, meta.ID)
 	return nil
-}
-
-// appendNote appends one note entry under the Notes section. Notes are
-// timestamp-free in the stored body (the serializer never invents timestamps);
-// entries are separated by a blank line.
-func appendNote(body []byte, note string) []byte {
-	return setSection(body, sectionNotes, strings.TrimRight(note, "\n"), true)
 }

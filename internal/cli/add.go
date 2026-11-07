@@ -74,9 +74,7 @@ func (a *App) cmdAdd(args []string) int {
 		Created:  model.FormatTimestamp(now),
 		Updated:  model.FormatTimestamp(now),
 	}
-	body := newBody(title, []bodySection{
-		{Name: sectionDescription, Text: *descFlag},
-	})
+	body := newBody(title, *descFlag)
 
 	meta := &store.TicketMeta{ID: id, Ticket: ticket, Body: body}
 	if err := tx.WriteDetail(meta); err != nil {

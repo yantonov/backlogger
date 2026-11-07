@@ -8,69 +8,54 @@ import (
 //
 // The tracker stores no `title` frontmatter field; the title is the body's first
 // ATX heading (spec 3.2), so `add` writes it as `# <title>` at the top of the
-// body. Structured prose
-// lives in `## <Section>` blocks below it. Both add and edit manipulate the
+// body. Everything below that heading is one opaque prose block: the tracker
+// never parses headings inside it, so a description is stored verbatim and a
+// `## ` line the writer supplied is just text. Both add and edit manipulate the
 // body through the helpers below so the layout stays consistent and is a pure
 // function of the bytes.
-const (
-	sectionDescription = "Description"
-	sectionNotes       = "Notes"
-)
 
-// newBody renders a fresh ticket body: the title heading followed by any
-// non-empty sections, in canonical order (Description, Notes). Empty sections
-// are omitted.
-func newBody(title string, sections []bodySection) []byte {
+// newBody renders a fresh ticket body: the title heading followed by the
+// description when one was given. The description is stored verbatim.
+func newBody(title, description string) []byte {
 	var b strings.Builder
 	b.WriteString("# ")
 	b.WriteString(title)
 	b.WriteString("\n")
-	writeSections(&b, sections)
+	writeProse(&b, description)
 	return []byte(b.String())
 }
 
-// bodySection is one named prose block. An empty Text is not emitted.
-type bodySection struct {
-	Name string
-	Text string
-}
-
-func writeSections(b *strings.Builder, sections []bodySection) {
-	for _, s := range sections {
-		if s.Text == "" {
-			continue
-		}
-		b.WriteString("\n## ")
-		b.WriteString(s.Name)
-		b.WriteString("\n")
-		b.WriteString(strings.TrimRight(s.Text, "\n"))
-		b.WriteString("\n")
+func writeProse(b *strings.Builder, text string) {
+	if text == "" {
+		return
 	}
+	b.WriteString("\n")
+	b.WriteString(strings.TrimRight(text, "\n"))
+	b.WriteString("\n")
 }
 
-// bodyTitle returns the text of the first ATX heading in body, or "".
+// bodyTitle returns the text of the body's title heading, or "". Only a
+// single-`#` heading is the title; a `## ` line is prose (spec 3.2).
 func bodyTitle(body []byte) string {
 	for _, line := range splitLines(body) {
 		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "#") {
+		if !strings.HasPrefix(trimmed, "# ") {
 			continue
 		}
-		text := strings.TrimSpace(strings.TrimLeft(trimmed, "#"))
-		text = strings.TrimSpace(strings.Trim(text, "#"))
-		if text != "" {
+		if text := strings.TrimSpace(strings.Trim(trimmed, "#")); text != "" {
 			return text
 		}
 	}
 	return ""
 }
 
-// setBodyTitle replaces the first ATX heading with `# title`, or prepends one
-// when the body has no heading. Other content is preserved verbatim.
+// setBodyTitle replaces the title heading with `# title`, or prepends one when
+// the body has no title heading. Other content is preserved verbatim.
 func setBodyTitle(body []byte, title string) []byte {
 	lines := splitLines(body)
 	heading := -1
 	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+		if strings.HasPrefix(strings.TrimSpace(line), "# ") {
 			heading = i
 			break
 		}
@@ -85,74 +70,41 @@ func setBodyTitle(body []byte, title string) []byte {
 	return joinLines(lines)
 }
 
-// setSection replaces or appends a `## name` section. An empty text removes the
-// section when it exists (and does nothing when it does not). When appendMode
-// is true and the section exists, text is appended to it on a new line instead
-// of replacing the existing prose.
-func setSection(body []byte, name, text string, appendMode bool) []byte {
+// proseStart returns the line index where the description begins: the line
+// after the body's title heading, or 0 when the body has no heading. The title
+// is the only structure the tracker reads out of a body, so everything after it
+// is prose (spec 3.2).
+func proseStart(lines []string) int {
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "# ") {
+			return i + 1
+		}
+	}
+	return 0
+}
+
+// setDescription replaces the whole description verbatim, keeping the title
+// heading. An empty text removes the description. The payload is never scanned
+// for headings, so any `## ` line in it is stored as text.
+func setDescription(body []byte, text string) []byte {
 	lines := splitLines(body)
-	start, end := sectionBounds(body, name)
-
-	if start < 0 {
-		if text == "" {
-			return joinLines(lines)
-		}
-		out := append([]string(nil), lines...)
-		out = append(out, "", "## "+name, strings.TrimRight(text, "\n"))
-		return joinLines(out)
-	}
-
-	if text == "" {
-		// Remove the heading and its block, plus the blank separator directly
-		// before it when present.
-		from := start
-		for from > 0 && strings.TrimSpace(lines[from-1]) == "" {
-			from--
-		}
-		out := append([]string(nil), lines[:from]...)
-		out = append(out, lines[end:]...)
-		return joinLines(out)
-	}
-
-	merged := text
-	if appendMode {
-		existing := strings.TrimSpace(strings.Join(lines[start+1:end], "\n"))
-		if existing != "" {
-			merged = existing + "\n\n" + strings.TrimRight(text, "\n")
-		}
-	}
-	block := strings.Split("## "+name+"\n"+strings.TrimRight(merged, "\n"), "\n")
+	start := proseStart(lines)
 	out := append([]string(nil), lines[:start]...)
-	out = append(out, block...)
-	out = append(out, lines[end:]...)
+	if strings.TrimSpace(text) != "" {
+		out = append(out, "", strings.TrimRight(text, "\n"))
+	}
 	return joinLines(out)
 }
 
-// sectionBounds returns the [start, end) line range of the `## name` section,
-// where start is the heading line and end is the line before the next `## `
-// heading (or len(lines)). It returns (-1, -1) when the section is absent.
-func sectionBounds(body []byte, name string) (int, int) {
+// appendProse adds text to the end of the body as a separate paragraph, keeping
+// the title and the existing description. The payload is stored verbatim.
+func appendProse(body []byte, text string) []byte {
 	lines := splitLines(body)
-	heading := "## " + name
-	start := -1
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.EqualFold(trimmed, heading) {
-			start = i
-			break
-		}
+	text = strings.TrimRight(text, "\n")
+	if text == "" {
+		return joinLines(lines)
 	}
-	if start < 0 {
-		return -1, -1
-	}
-	end := len(lines)
-	for i := start + 1; i < len(lines); i++ {
-		if strings.HasPrefix(strings.TrimSpace(lines[i]), "## ") {
-			end = i
-			break
-		}
-	}
-	return start, end
+	return joinLines(append(append([]string(nil), lines...), "", text))
 }
 
 // splitLines splits body into lines, dropping a single trailing newline so the

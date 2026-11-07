@@ -21,8 +21,8 @@ Core
   bl list [--status S] [--archived] [--all] [--json] [-v|-vv]
   bl add <title> [--id ID] [-d desc] [-p prio]
   bl show <id> [--attachments] [--json]
-  bl edit <id> [-p prio] [--title TEXT] [--description TEXT]
-                [--notes TEXT] [--note TEXT] [--body TEXT]
+  bl edit <id> [-p prio] [--title TEXT] [-d TEXT] [--append TEXT]
+                [--body TEXT]
   bl start <id>                Atomically claim (open -> in progress)
   bl done <id> / reopen <id>
 
