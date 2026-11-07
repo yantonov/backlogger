@@ -15,7 +15,23 @@ A **slice** is the set of tickets this run implements. Agree on it before the
 first claim and write down its filter: a label, a component, or a list of IDs.
 Every step then answers one question with that filter: in scope or out.
 
-Done when the filter names at least one open ticket.
+Also agree the **branch strategy** before the first claim. Ask for it the same
+way you ask for the agent tool and model. Offer three strategies, each with its
+trade-off:
+
+- **Stacked ticket branches**: one branch per ticket, each cut from the previous.
+  This suits a run where each ticket gets its own review. It leaves one branch
+  per ticket to manage.
+- **Integration branch**: one commit per ticket directly on `master`, or on
+  whatever branch the repo integrates to. This suits a solo run reviewed at the
+  end. It keeps history linear, with no branches to fold.
+- **Hybrid**: stacked ticket branches folded into the integration branch at a
+  boundary you name.
+
+Record the strategy next to the filter, so a resumed session keeps it.
+
+Done when the filter names at least one open ticket and you wrote the strategy
+down.
 
 ## Sources of truth
 
@@ -40,10 +56,25 @@ That sequence keeps the history linear.
    Done when the command exits 0. On a non-zero exit the ticket moved. Run
    `bl available` again and pick from the new list.
 
-3. **Branch.** Cut the ticket branch from the previous ticket's branch. The slice
-   then forms one line, and one branch per ticket records the sequence. Name the
-   branch after the ticket ID. When a branch for that ID exists, use it as-is.
-   Done when `git log` on that branch shows the previous ticket's commit.
+3. **Branch.** Follow the strategy agreed at scope time.
+
+   One invariant holds in all three strategies: the new work descends from the
+   previous ticket's commit. Stacked branches show that commit in `git log`. An
+   integration branch contains it.
+
+   - *Stacked branches:* cut from the previous ticket's branch. When a branch for
+     this ID exists, use it as-is.
+   - *Integration branch:* commit directly on it.
+   - *Hybrid:* cut from the previous ticket's branch until the agreed boundary,
+     then follow `## Consolidate`.
+
+   Resuming after a fold: when the previous ticket's branch is gone, its commit
+   is in the integration branch. Cut from there. Treat the missing branch as a
+   completed fold once `git merge-base --is-ancestor <sha> <integration>`
+   passes.
+
+   Done when `git log` shows the previous ticket's commit in the new work's
+   ancestry.
 
 4. **Delegate.** Spawn one subagent per ticket in a separate agent process, which
    keeps this session small. Ask the user which agent tool and model to use, and
@@ -99,16 +130,36 @@ The commits stay local. Push and review come after the slice.
 
 ## Output
 
-The run ends when `bl available` holds no in-scope ticket. Report one local
-branch and one commit per ticket, `.tickets/` and `backlog.md` in sync, and each
-ticket left `started` with the reason. Keep every report to the step 8 line: the
-id, the commit, the gate state, and the next id.
+The run ends when `bl available` holds no in-scope ticket. Report the strategy you
+used, the integration branch the work sits on, and one commit per ticket. Report
+that `.tickets/` and `backlog.md` agree, and that each unfinished ticket sits
+`started` with the reason. Keep every report to the step 8 line: the id, the
+commit, the gate state, and the next id.
 
 A slice of more than five tickets also reports at each slice boundary: when a
 root of the dependency tree finishes, and before work the human may want to
 redirect, such as a large refactor, a schema change, or any item on the escalate
 list. The per-ticket line is the heartbeat. The boundary report is the place the
 human steers.
+
+## Consolidate
+
+Only for the stacked and hybrid strategies. Consolidate at the boundary named at
+scope time, or at the end of the slice.
+
+- Fold with `git merge --ff-only <tip-branch>` when the chain is linear. A
+  fast-forward makes the history read as ticket order. A merge commit buries that
+  order.
+- Run the gate before the merge and again after it. A green branch proves the
+  branch. It does not prove the merge.
+- Delete a folded branch after `git branch --merged` lists it. Deleting an
+  unmerged branch discards work.
+- Bookkeeping adds noise. Commits to `.tickets/` and `backlog.md` land wherever
+  checkout happened to be, so a fold can carry a commit that is not a ticket.
+  Either commit bookkeeping on the integration branch or accept it in history.
+
+Done when the gate is green on the integration branch and you either deleted each
+folded branch or listed it as retained.
 
 ## Escalate to human (stop and ask)
 
