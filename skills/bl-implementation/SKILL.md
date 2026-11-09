@@ -48,6 +48,10 @@ down.
 Work one ticket at a time. Start ticket *n+1* only after you close ticket *n*.
 That sequence keeps the history linear.
 
+The loop never pauses for permission between tickets. A close, a green gate, a
+heartbeat line, a boundary report, and a ticket left `started` all continue into
+step 1 on their own. Stop only for the reasons in `## Escalate to human`.
+
 1. **Pick.** Run `bl available`. Take the first in-scope ticket. The list is
    dependency-ordered, so it beats line order in `backlog.md`.
    Done when you hold one in-scope ID.
@@ -111,7 +115,8 @@ That sequence keeps the history linear.
    Done when `git log -1` shows that message and `git status` is clean.
 
 7. **Close.** Run `bl done <id>`. For a partly finished ticket, leave it
-   `started` and record the rest: `bl edit <id> --append "…"`.
+   `started` and record the rest: `bl edit <id> --append "…"`, then carry on
+   with the next ticket.
    Done when the ticket state and the branch agree.
 
 8. **Report.** Print one line for the human as the ticket closes, then return to
@@ -124,6 +129,8 @@ That sequence keeps the history linear.
    When the ticket stays `started`, close the same line with the remaining work
    in one sentence. Print the line on a red gate too: a stalled ticket is the one
    the human needs to see early.
+   The line is a status, not a question. Print it and go to step 1; do not wait
+   for a reply.
    Done when the line carries all five fields.
 
 The commits stay local. Push and review come after the slice.
@@ -140,7 +147,8 @@ A slice of more than five tickets also reports at each slice boundary: when a
 root of the dependency tree finishes, and before work the human may want to
 redirect, such as a large refactor, a schema change, or any item on the escalate
 list. The per-ticket line is the heartbeat. The boundary report is the place the
-human steers.
+human steers, and it still does not pause the run: print it and continue, unless
+the item itself is on the escalate list, which does stop.
 
 ## Consolidate
 
