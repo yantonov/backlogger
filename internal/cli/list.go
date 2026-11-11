@@ -154,7 +154,7 @@ func archivedEntries(paths *store.Paths) ([]index.Entry, error) {
 		out = append(out, index.Entry{
 			ID:         meta.ID,
 			Glyph:      "x",
-			Title:      model.Title(meta.Body),
+			Title:      meta.Ticket.Title,
 			Deps:       append([]string(nil), meta.Ticket.Deps...),
 			ArchivedAt: index.ArchivedMarker,
 		})
@@ -190,12 +190,9 @@ func isActiveStatus(s model.Status) bool {
 	return s == model.StatusOpen || s == model.StatusInProgress
 }
 
-// titleOf returns the display title stored on an index entry. It exists for the
-// JSON show path (which reads a detail file); navigation responses use the
-// entry's title directly.
+// titleOf returns the display title of a detail file, read from the required
+// `title` frontmatter key. It exists for the JSON show path; navigation
+// responses use the index entry's title directly.
 func titleOf(meta *store.TicketMeta) string {
-	if t := model.Title(meta.Body); t != "" {
-		return t
-	}
-	return meta.ID
+	return meta.Ticket.Title
 }

@@ -60,6 +60,7 @@ func frontBlock(t *testing.T, text []byte) []byte {
 func expectedMap(doc *Document) map[string]any {
 	t := doc.Ticket
 	m := map[string]any{
+		"title":       t.Title,
 		"status":      string(t.Status),
 		"priority":    t.Priority,
 		"deps":        sortedAny(t.Deps),

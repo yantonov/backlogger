@@ -25,7 +25,8 @@ writers.
      what is there now. Never retry blindly and never write the file to force it.
 3. **Read.** Run `bl show <id>` (`--json` when you need structured output).
    Done when you understand the description and dependencies. The body is one
-   prose block; only the first `# ` heading is structural.
+   opaque prose block; the title is the `title` frontmatter field and `--title`
+   is the only way to change it.
 4. **Do the work.**
 5. **Close.** Run `bl done <id>` when finished. If you cannot finish, leave the
    ticket `started` and record what remains: `bl edit <id> --append "…"`.

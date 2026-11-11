@@ -16,9 +16,10 @@ import (
 // ts is the fixed timestamp test tickets use so their bytes are deterministic.
 var ts = time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
 
-func modelTicket(status string, deps []string) model.Ticket {
+func modelTicket(id, status string, deps []string) model.Ticket {
 	stamp := model.FormatTimestamp(ts)
 	return model.Ticket{
+		Title:    id,
 		Status:   model.Status(status),
 		Priority: model.DefaultPriority,
 		Deps:     deps,
@@ -49,8 +50,8 @@ func addTicket(t *testing.T, paths *store.Paths, id, status string, deps ...stri
 	t.Helper()
 	meta := &store.TicketMeta{
 		ID:     id,
-		Ticket: modelTicket(status, deps),
-		Body:   []byte("# " + id + "\n"),
+		Ticket: modelTicket(id, status, deps),
+		Body:   []byte(id + " prose\n"),
 	}
 	if err := paths.WriteDetail(meta); err != nil {
 		t.Fatal(err)
@@ -209,7 +210,7 @@ func TestRun_DanglingAttachmentLink_FlagsAttachment(t *testing.T) {
 	paths := newProject(t)
 	meta := &store.TicketMeta{
 		ID:     "alpha",
-		Ticket: modelTicket("open", nil),
+		Ticket: modelTicket("alpha", "open", nil),
 		Body:   []byte("# alpha\n"),
 	}
 	meta.Ticket.Attachments = []string{"gone.md"}
@@ -348,7 +349,7 @@ func givenAlphaAttachments(t *testing.T, links, files []string) *store.Paths {
 	paths := newProject(t)
 	meta := &store.TicketMeta{
 		ID:     "alpha",
-		Ticket: modelTicket("open", nil),
+		Ticket: modelTicket("alpha", "open", nil),
 		Body:   []byte("# alpha\n"),
 	}
 	meta.Ticket.Attachments = links

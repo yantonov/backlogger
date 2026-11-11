@@ -80,8 +80,8 @@ func TestShow_GeneratedID_PrintsTicket(t *testing.T) {
 
 	out := mustRun(t, dir, "show", id).Stdout
 
-	if !strings.Contains(out, "# Add login flow") {
-		t.Fatalf("show = %q, want the title heading", out)
+	if !strings.Contains(out, "title: \"Add login flow\"") {
+		t.Fatalf("show = %q, want the title field", out)
 	}
 }
 
@@ -552,6 +552,7 @@ func TestShowJSON_Ticket_PrintsFullDetailAndBody(t *testing.T) {
 	var one struct {
 		Ticket struct {
 			ID       string `json:"id"`
+			Title    string `json:"title"`
 			Priority int    `json:"priority"`
 			Created  string `json:"created"`
 			Hash     string `json:"hash"`
@@ -561,7 +562,7 @@ func TestShowJSON_Ticket_PrintsFullDetailAndBody(t *testing.T) {
 	if err := json.Unmarshal([]byte(res.Stdout), &one); err != nil {
 		t.Fatalf("show --json is not valid JSON: %v\n%s", err, res.Stdout)
 	}
-	if one.Ticket.ID != "jsn" || one.Ticket.Priority != 1 || one.Ticket.Created == "" || !strings.Contains(one.Body, "# JSON") || one.Ticket.Hash == "" {
+	if one.Ticket.ID != "jsn" || one.Ticket.Title != "JSON" || one.Ticket.Priority != 1 || one.Ticket.Created == "" || one.Ticket.Hash == "" {
 		t.Fatalf("unexpected show JSON: %+v", one)
 	}
 }

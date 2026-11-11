@@ -51,6 +51,7 @@ func TestCrashHelper(t *testing.T) {
 	meta := &store.TicketMeta{
 		ID: "victim",
 		Ticket: model.Ticket{
+			Title:    "victim",
 			Status:   model.StatusOpen,
 			Priority: model.DefaultPriority,
 			Created:  ts,

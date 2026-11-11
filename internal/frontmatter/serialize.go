@@ -17,6 +17,7 @@ func Serialize(doc *Document) []byte {
 	b.WriteByte('\n')
 
 	t := doc.Ticket
+	writeScalar(&b, "title", t.Title)
 	writeEnum(&b, "status", string(t.Status))
 	writeInt(&b, "priority", t.Priority)
 	writeList(&b, "deps", t.Deps)

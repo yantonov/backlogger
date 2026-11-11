@@ -287,3 +287,13 @@ func lineIDs(t *testing.T, out string) []string {
 	}
 	return ids
 }
+
+// writeRawDetail overwrites a detail file with raw text, bypassing the write
+// path so a hand-corrupted file can be injected (spec 5.3 title invariant).
+func writeRawDetail(t *testing.T, dir, id, content string) {
+	t.Helper()
+	p := filepath.Join(dir, ".tickets", id+".md")
+	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -49,6 +49,11 @@ func randomTicket(r *rand.Rand) *Document {
 		Status:   statuses[r.Intn(len(statuses))],
 		Priority: r.Intn(model.MaxPriority + 1),
 	}
+	// A title is required and may not be blank, so the generator never emits an
+	// empty one: a leading letter makes it non-empty and YAML-unambiguous.
+	for len(strings.TrimSpace(t.Title)) == 0 {
+		t.Title = randomString(r, 20)
+	}
 	for i := 0; i < r.Intn(5); i++ {
 		t.Deps = append(t.Deps, randomString(r, 12))
 	}

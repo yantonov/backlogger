@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+)
 
 // TimestampLayout is the canonical timestamp encoding: UTC ISO-8601 with second
 // precision and a literal Z suffix. The serializer emits timestamps in this
@@ -45,6 +50,7 @@ const (
 // single source of truth for the serializer's field order; unknown/user keys
 // follow it in their original relative order.
 var CanonicalFieldOrder = []string{
+	"title",
 	"status",
 	"priority",
 	"deps",
@@ -69,10 +75,11 @@ type Extra struct {
 // Ticket is the typed frontmatter of a single detail file. Identity is the
 // filename stem and is deliberately not a field (spec 3.2).
 //
-// The core fields (Status, Priority, Deps, Attachments, Created, Updated) are
-// always emitted by the serializer, even when empty. ClosedAt and Archived are
-// emitted only when set.
+// The core fields (Title, Status, Priority, Deps, Attachments, Created,
+// Updated) are always emitted by the serializer, even when empty. ClosedAt and
+// Archived are emitted only when set.
 type Ticket struct {
+	Title       string
 	Status      Status
 	Priority    int
 	Deps        []string
@@ -84,8 +91,24 @@ type Ticket struct {
 	Extra       []Extra
 }
 
+// ErrTitleMissing is the sentinel for a detail file without a title. It is
+// never satisfied by a default: a title has no meaningful default, so a file
+// that does not carry one is an error on every read path (spec 5.3).
+var ErrTitleMissing = errors.New("title is required")
+
+// Validate checks the invariants the parser cannot express line by line. A
+// ticket must carry a non-empty title; whitespace only is empty, because the
+// subset can spell both `title: ""` and `title: "   "`.
+func (t Ticket) Validate() error {
+	if strings.TrimSpace(t.Title) == "" {
+		return fmt.Errorf("%w: frontmatter key `title` must be a non-empty scalar", ErrTitleMissing)
+	}
+	return nil
+}
+
 // DefaultTicket returns the field values a body-only detail file is treated as
-// having: status open and priority 2, with empty lists and timestamps.
+// having: status open and priority 2, with empty lists and timestamps. The
+// title is not defaulted; Validate rejects the result of a body-only file.
 func DefaultTicket() Ticket {
 	return Ticket{
 		Status:   DefaultStatus,

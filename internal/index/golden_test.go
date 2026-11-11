@@ -84,12 +84,13 @@ func TestCommit_InjectedIndexReindex_WritesIndexWithNewTicket(t *testing.T) {
 	meta := &store.TicketMeta{
 		ID: "login",
 		Ticket: model.Ticket{
+			Title:    "Add login flow",
 			Status:   model.StatusOpen,
 			Priority: 1,
 			Created:  model.FormatTimestamp(now),
 			Updated:  model.FormatTimestamp(now),
 		},
-		Body: []byte("# Add login flow\n"),
+		Body: []byte("some prose\n"),
 	}
 	if err := tx.WriteDetail(meta); err != nil {
 		t.Fatalf("write detail: %v", err)

@@ -85,7 +85,7 @@ and crash tests keep one randomized or racing When per test.
 | Second canonicalize pass is a no-op | `internal/frontmatter/roundtrip_test.go` | `TestCanonicalize_CanonicalFixture_IsFixedPoint` |
 | Canonical field order and sorted lists | `internal/frontmatter/roundtrip_test.go` | `TestCanonicalize_GoodFixture_EmitsCanonicalFrontmatter` |
 | Canonical timestamp form | `internal/model/ticket_test.go` | `TestFormatTimestamp_UTCTime_RendersCanonicalForm` |
-| Body title rule (`# ` only; `## ` and deeper are prose) | `internal/model/title_test.go` | `TestTitle`, `TestTitleLine` |
+| Required title invariant (missing, empty, whitespace-only rejected) | `internal/model/ticket_test.go` | `TestValidate_Title_RejectsMissingAndBlank`, `TestValidate_NonEmptyTitle_Accepts` |
 
 ## 2. Frontmatter subset tests (spec section 8.2)
 
@@ -98,8 +98,10 @@ and crash tests keep one randomized or racing When per test.
 | Scalars are quoted only when unsafe and parse back unchanged | `internal/frontmatter/preserve_test.go` | `TestQuoteIfNeeded_Scalar_QuotesOnlyUnsafeTokens`, `TestParseScalar_QuotedScalar_RoundTrips` |
 | Unknown/user keys preserved byte-for-byte | `internal/frontmatter/preserve_test.go` | `TestParse_UnknownKeys_CapturesThemVerbatimInOrder`, `TestSerialize_ParsedUnknownKeys_EmitsThemVerbatimInOrder` |
 | Known keys always emitted, even when empty | `internal/frontmatter/preserve_test.go` | `TestSerialize_DefaultTicket_EmitsCoreKeysAndOmitsUnsetConditionalKeys` |
-| Body-only file gets defaults, never a data-loss error | `internal/frontmatter/fence_test.go` | `TestParse_NoLeadingFence_DefaultsFieldsAndKeepsBodyVerbatim` |
-| Body may contain `---` freely; byte-zero and CRLF fences | `internal/frontmatter/fence_test.go` | `TestParse_DashLinesInBody_KeepsWholeBody`, `TestParse_BlankLineBeforeFence_YieldsDefaults`, `TestParse_CRLFFences_ParsesFields` |
+| A file with no title errors, naming the invariant, on every read path | `internal/frontmatter/fence_test.go` | `TestParse_MissingTitle_ReturnsErrTitleMissing`, `TestParse_BlankTitle_ReturnsErrTitleMissing`, `TestParse_BlankLineBeforeFence_NoFrontmatterSoNoTitle` |
+| The body is prose: a heading in it is neither parsed nor structural | `internal/frontmatter/fence_test.go` | `TestParse_BodyHeading_IsProseNotTitle` |
+| A detail with no title is refused on write, creating no file | `internal/store/detail_test.go` | `TestWriteDetail_MissingTitle_RefusesAndCreatesNoFile` |
+| Body may contain `---` freely; byte-zero and CRLF fences | `internal/frontmatter/fence_test.go` | `TestParse_DashLinesInBody_KeepsWholeBody`, `TestParse_CRLFFences_ParsesFields` |
 | An opened but unclosed fence is an error | `internal/frontmatter/fence_test.go` | `TestParse_UnclosedFence_ReturnsError` |
 
 ## 3. Index byte-stability (spec section 3.1)
@@ -230,6 +232,10 @@ verbs call the same store-level primitives tested here.
 | CLI: timestamps come from the injected clock; a transition bumps only updated | `internal/cli/app_test.go` | `TestAdd_InjectedClock_StampsCreatedAndUpdatedWithIt`, `TestStart_AdvancedClock_BumpsUpdatedAndKeepsCreated` |
 | Edit priority and append prose | `test/cli_test.go` | `TestEdit_PriorityAndAppend_UpdatesDetail` |
 | Description containing a `## ` line is stored verbatim and edit is idempotent | `test/cli_test.go` | `TestEdit_DescriptionWithHeading_IsStoredVerbatim` |
+| `--title` writes the field, leaves the body alone, and reindexes | `internal/cli/render_test.go` | `TestEditTitle_SetsFrontmatterField_WithoutTouchingBody` |
+| A blank `--title` fails naming the invariant and changes nothing | `internal/cli/render_test.go` | `TestEditTitle_BlankTitle_FailsAndChangesNothing` |
+| A hand-written detail without a title errors on `show` | `internal/cli/render_test.go` | `TestShow_MissingTitle_ErrorsNamingTheInvariant` |
+| A `# ` line inside a fence is never the display title | `internal/cli/render_test.go` | `TestAdd_BodyWithShellComment_IsNotTheTitle` |
 | CLI integration: guarded transitions | `test/cli_test.go` | `TestStart_OpenTicket_BecomesInProgress`, `TestStart_InProgressTicket_FailsAndKeepsStatus`, `TestReopen_InProgressTicket_BecomesOpen`, `TestDone_OpenTicket_FailsAndKeepsStatus`, `TestDone_InProgressTicket_ClosesAndSetsClosedAt`, `TestDone_ClosedTicket_FailsAndKeepsStatus`, `TestReopen_ClosedTicket_BecomesOpenAndClearsClosedAt`, `TestReopen_OpenTicket_FailsAndKeepsStatus`, `TestStatus_ExistingTicket_FailsAsUnknownCommand` |
 | CLI integration: list filters (index-only, no -p) | `test/cli_test.go` | `TestList_Default_ShowsOnlyActive`, `TestList_StatusClosed_ShowsOnlyClosed`, `TestList_All_ShowsEveryTicket`, `TestList_PriorityFlag_FailsAsUnknownFlag`, `TestList_BogusStatus_Fails` |
 | CLI: list and views read backlog.md only; missing detail still flagged by doctor | `test/cli_test.go` | `TestViews_DetailDeleted_StillSucceed`, `TestListAll_DetailDeleted_StillListsTicket`, `TestDoctor_DetailDeleted_Fails` |
@@ -239,7 +245,7 @@ verbs call the same store-level primitives tested here.
 | Concurrency through the CLI | `test/cli_test.go` | `TestParallelStart_OpenTicket_ExactlyOneSucceeds` |
 | Missing `.tickets/` read vs write | `test/cli_test.go` | `TestNonAddCommands_MissingTickets_FailWithGuidanceAndCreateNothing`, `TestAdd_FreshDir_CreatesTicketsAndIndex` |
 | Mutating command sweeps a stale temp file | `test/cli_test.go` | `TestAdd_StaleTempFile_SweepsIt` |
-| Body editor (prose model, verbatim payloads) | `internal/cli/render_test.go` | `TestSetDescription_ReplacesWholeProseBlock`, `TestSetDescription_HeadingInPayload_IsStoredVerbatim`, `TestSetDescription_EmptyText_RemovesProseKeepsTitle`, `TestAppendProse_KeepsExistingProseAndAddsParagraph`, `TestAppendProse_HeadingInPayload_IsStoredVerbatim`, `TestSetBodyTitle_ExistingHeading_ReplacesItAndKeepsContent`, `TestSetBodyTitle_NoHeading_PrependsItAndKeepsContent` |
+| Body editor (prose model, verbatim payloads) | `internal/cli/render_test.go` | `TestSetDescription_ReplacesWholeProseBlock`, `TestSetDescription_HeadingInPayload_IsStoredVerbatim`, `TestSetDescription_EmptyText_EmptiesTheBody`, `TestAppendProse_KeepsExistingProseAndAddsParagraph`, `TestAppendProse_HeadingInPayload_IsStoredVerbatim` |
 | CLI flag parser | `internal/cli/render_test.go` | `TestFlagSet_InterleavedFlagsAndPositionals_ParsesValuesAndTracksSet`, `TestFlagSet_BadInput_FailsToParse`, `TestFlagSet_DoubleDash_TreatsRestAsPositionals` |
 
 ## 7. JSON output (spec section 7)

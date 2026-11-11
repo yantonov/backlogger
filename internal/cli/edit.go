@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/yantonov/backlogger/internal/index"
 	"github.com/yantonov/backlogger/internal/model"
@@ -10,9 +11,9 @@ import (
 
 // cmdEdit implements `bl edit <id>`: it edits structured fields and/or the
 // Markdown body, last-writer-wins, preserving unknown frontmatter keys (the
-// frontmatter package already writes them back verbatim). The body is the title
-// heading plus one opaque prose block: -d replaces that block, --append adds a
-// paragraph to it, leading ---body replaces the whole body (spec 3.2).
+// frontmatter package already writes them back verbatim). The title is the
+// required `title` frontmatter key: --title replaces it, and the body is one
+// opaque prose block that -d replaces and --append extends (spec 3.2).
 func (a *App) cmdEdit(args []string) int {
 	fs := newFlagSet()
 	priorityFlag := fs.Int(model.DefaultPriority, "-p", "--priority")
@@ -46,6 +47,9 @@ func (a *App) cmdEdit(args []string) int {
 	if edit.setPriority && (edit.priority < model.MinPriority || edit.priority > model.MaxPriority) {
 		return a.usageError(fmt.Sprintf("priority %d is out of range %d-%d",
 			edit.priority, model.MinPriority, model.MaxPriority))
+	}
+	if edit.setTitle && strings.TrimSpace(edit.title) == "" {
+		return a.usageError("edit --title needs a non-empty title")
 	}
 
 	paths, err := a.discover()
@@ -98,23 +102,23 @@ func (e editRequest) any() bool {
 }
 
 // mutate applies the request to a ticket. It runs inside the lock, after the
-// authoritative read.
+// authoritative read. The title is a frontmatter field (spec 5.3), so --title
+// sets it directly and the body is prose only.
 func (e editRequest) mutate(meta *store.TicketMeta) error {
 	if e.setPriority {
 		meta.Ticket.Priority = e.priority
 	}
+	if e.setTitle {
+		meta.Ticket.Title = e.title
+	}
 	if e.setBody {
 		meta.Body = []byte(e.body)
 	}
-	if e.setTitle {
-		meta.Body = setBodyTitle(meta.Body, e.title)
-	}
 	if e.setDesc {
-		meta.Body = setDescription(meta.Body, e.desc)
+		meta.Body = setDescription(e.desc)
 	}
 	if e.setAppend {
 		meta.Body = appendProse(meta.Body, e.appendText)
 	}
-	meta.Body = ensureHeading(meta.Body, meta.ID)
-	return nil
+	return meta.Ticket.Validate()
 }

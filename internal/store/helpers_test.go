@@ -14,6 +14,7 @@ func newTicket(id, body string, now time.Time) *store.TicketMeta {
 	return &store.TicketMeta{
 		ID: id,
 		Ticket: model.Ticket{
+			Title:    id,
 			Status:   model.StatusOpen,
 			Priority: model.DefaultPriority,
 			Created:  ts,

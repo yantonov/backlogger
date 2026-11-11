@@ -92,6 +92,7 @@ func TestCanonicalize_GoodFixture_EmitsCanonicalFrontmatter(t *testing.T) {
 		t.Fatalf("Canonicalize: %v", err)
 	}
 	wantPrefix := "---\n" +
+		"title: \"Add login flow\"\n" +
 		"status: open\n" +
 		"priority: 2\n" +
 		"deps: [ci, design]\n" +

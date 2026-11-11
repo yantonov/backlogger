@@ -2,26 +2,51 @@ package frontmatter
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/yantonov/backlogger/internal/model"
 )
 
-// TestParse_NoLeadingFence_DefaultsFieldsAndKeepsBodyVerbatim verifies that a
-// file without a leading fence is a body-only ticket with default fields and is
-// never a data-losing error (spec 8.2).
-func TestParse_NoLeadingFence_DefaultsFieldsAndKeepsBodyVerbatim(t *testing.T) {
-	in := readFixture(t, "body_only.md")
+// TestParse_MissingTitle_ReturnsErrTitleMissing verifies that a file without a
+// title is loud on read. A title has no default, so an unfenced file (which has
+// no fields at all) is an error and never a silently empty title (spec 5.3,
+// 8.2).
+func TestParse_MissingTitle_ReturnsErrTitleMissing(t *testing.T) {
+	in := readFixture(t, "no_title.md")
+	if _, err := Parse(in); !errors.Is(err, model.ErrTitleMissing) {
+		t.Fatalf("Parse body-only = %v, want ErrTitleMissing", err)
+	}
+}
+
+// TestParse_BlankTitle_ReturnsErrTitleMissing verifies that an explicitly empty
+// or whitespace-only title is rejected. The subset can spell both, so the check
+// cannot be "did the key appear".
+func TestParse_BlankTitle_ReturnsErrTitleMissing(t *testing.T) {
+	for _, in := range []string{
+		"---\ntitle: \"\"\n---\nbody\n",
+		"---\ntitle: \"   \"\n---\nbody\n",
+	} {
+		if _, err := Parse([]byte(in)); !errors.Is(err, model.ErrTitleMissing) {
+			t.Fatalf("Parse %q = %v, want ErrTitleMissing", in, err)
+		}
+	}
+}
+
+// TestParse_BodyHeading_IsProseNotTitle verifies the body is pure prose: a file
+// whose body starts with a `## ` heading parses, and the title comes from the
+// field, not from the body.
+func TestParse_BodyHeading_IsProseNotTitle(t *testing.T) {
+	in := []byte("---\ntitle: \"Real title\"\n---\n## Design\n\nprose\n")
 	doc, err := Parse(in)
 	if err != nil {
-		t.Fatalf("Parse body-only: %v", err)
+		t.Fatalf("Parse: %v", err)
 	}
-	want := model.DefaultTicket()
-	if doc.Ticket.Status != want.Status || doc.Ticket.Priority != want.Priority {
-		t.Fatalf("body-only ticket defaults = %+v, want %+v", doc.Ticket, want)
+	if doc.Ticket.Title != "Real title" {
+		t.Fatalf("title = %q, want the frontmatter title", doc.Ticket.Title)
 	}
-	if !bytes.Equal(doc.Body, in) {
-		t.Fatalf("body-only content must be preserved verbatim")
+	if !bytes.Equal(doc.Body, []byte("## Design\n\nprose\n")) {
+		t.Fatalf("body must be kept verbatim, got %q", doc.Body)
 	}
 }
 
@@ -42,16 +67,13 @@ func TestParse_DashLinesInBody_KeepsWholeBody(t *testing.T) {
 	}
 }
 
-// TestParse_BlankLineBeforeFence_YieldsDefaults verifies that whitespace before
-// the opening fence means there is no frontmatter block at all.
-func TestParse_BlankLineBeforeFence_YieldsDefaults(t *testing.T) {
-	in := []byte("\n---\nstatus: closed\n---\nbody\n")
-	doc, err := Parse(in)
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
-	}
-	if doc.Ticket.Status != model.DefaultStatus {
-		t.Fatalf("leading blank line must yield defaults, got %q", doc.Ticket.Status)
+// TestParse_BlankLineBeforeFence_NoFrontmatterSoNoTitle verifies that
+// whitespace before the opening fence means there is no frontmatter block at
+// all, and therefore no title.
+func TestParse_BlankLineBeforeFence_NoFrontmatterSoNoTitle(t *testing.T) {
+	in := []byte("\n---\ntitle: t\nstatus: closed\n---\nbody\n")
+	if _, err := Parse(in); !errors.Is(err, model.ErrTitleMissing) {
+		t.Fatalf("leading blank line must yield no frontmatter, got %v", err)
 	}
 }
 
@@ -66,12 +88,12 @@ func TestParse_UnclosedFence_ReturnsError(t *testing.T) {
 
 // TestParse_CRLFFences_ParsesFields verifies Windows line endings are accepted.
 func TestParse_CRLFFences_ParsesFields(t *testing.T) {
-	in := []byte("---\r\nstatus: closed\r\npriority: 3\r\n---\r\nbody\r\n")
+	in := []byte("---\r\ntitle: crlf\r\nstatus: closed\r\npriority: 3\r\n---\r\nbody\r\n")
 	doc, err := Parse(in)
 	if err != nil {
 		t.Fatalf("Parse CRLF: %v", err)
 	}
-	if doc.Ticket.Status != model.StatusClosed || doc.Ticket.Priority != 3 {
+	if doc.Ticket.Title != "crlf" || doc.Ticket.Status != model.StatusClosed || doc.Ticket.Priority != 3 {
 		t.Fatalf("CRLF frontmatter not parsed: %+v", doc.Ticket)
 	}
 }

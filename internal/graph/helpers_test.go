@@ -14,13 +14,14 @@ func meta(id string, status model.Status, priority int, deps ...string) *store.T
 	return &store.TicketMeta{
 		ID: id,
 		Ticket: model.Ticket{
+			Title:    id,
 			Status:   status,
 			Priority: priority,
 			Created:  ts,
 			Updated:  ts,
 			Deps:     deps,
 		},
-		Body: []byte("# " + id + "\n"),
+		Body: []byte(id + " prose\n"),
 	}
 }
 

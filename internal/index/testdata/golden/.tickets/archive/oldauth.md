@@ -1,4 +1,5 @@
 ---
+title: "Drop old auth"
 status: closed
 priority: 3
 deps: []
@@ -8,4 +9,3 @@ updated: 2026-10-09T09:00:00Z
 closed-at: 2026-10-08T12:00:00Z
 archived: 2026-10-09T09:00:00Z
 ---
-# Drop old auth

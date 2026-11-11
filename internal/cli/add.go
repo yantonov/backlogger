@@ -69,12 +69,13 @@ func (a *App) cmdAdd(args []string) int {
 
 	now := a.now()
 	ticket := model.Ticket{
+		Title:    title,
 		Status:   model.StatusOpen,
 		Priority: *priorityFlag,
 		Created:  model.FormatTimestamp(now),
 		Updated:  model.FormatTimestamp(now),
 	}
-	body := newBody(title, *descFlag)
+	body := newBody(*descFlag)
 
 	meta := &store.TicketMeta{ID: id, Ticket: ticket, Body: body}
 	if err := tx.WriteDetail(meta); err != nil {

@@ -23,8 +23,8 @@ type Detail struct {
 	Deps []string
 	// ArchivedAt is the stored archive timestamp; presence means archived.
 	ArchivedAt string
-	// Title is the display title. The tracker stores no title field, so it is derived
-	// from the body's first heading when the detail file is read.
+	// Title is the display title, read from the required `title` frontmatter key
+	// (spec 5.3).
 	Title string
 }
 
@@ -36,7 +36,7 @@ func detailFromMeta(meta *store.TicketMeta) *Detail {
 		Created:    meta.Ticket.Created,
 		Deps:       append([]string(nil), meta.Ticket.Deps...),
 		ArchivedAt: meta.Ticket.Archived,
-		Title:      model.Title(meta.Body),
+		Title:      meta.Ticket.Title,
 	}
 }
 

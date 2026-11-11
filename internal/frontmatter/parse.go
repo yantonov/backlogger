@@ -34,19 +34,21 @@ var (
 	intRe       = regexp.MustCompile(`^-?[0-9]+$`)
 )
 
-// Parse reads the frozen flat YAML subset from text. A file without a leading
-// fence is a body-only ticket with default fields and is not an error (spec
-// 8.2).
+// Parse parses text into a document. A file without a leading fence has no
+// frontmatter, so it has no title and is rejected like any other titleless
+// detail; it is never silently given default fields (spec 5.3, 8.2).
 func Parse(text []byte) (*Document, error) {
 	front, body, hasFront, err := splitFences(text)
 	if err != nil {
 		return nil, err
 	}
 	doc := &Document{Ticket: model.DefaultTicket(), Body: body}
-	if !hasFront {
-		return doc, nil
+	if hasFront {
+		if err := parseBlock(front, &doc.Ticket); err != nil {
+			return nil, err
+		}
 	}
-	if err := parseBlock(front, &doc.Ticket); err != nil {
+	if err := doc.Ticket.Validate(); err != nil {
 		return nil, err
 	}
 	return doc, nil
@@ -112,6 +114,12 @@ func parseLine(line string, lineNo int, t *model.Ticket, seen map[string]bool) e
 	}
 
 	switch key {
+	case "title":
+		s, err := parseScalar(value)
+		if err != nil {
+			return &ParseError{Line: lineNo, Msg: err.Error()}
+		}
+		t.Title = s
 	case "status":
 		if !model.Status(value).Valid() {
 			return &ParseError{Line: lineNo, Msg: fmt.Sprintf("invalid status %q", value)}

@@ -134,6 +134,7 @@ never scanned on the hot path (see §3.5).
 
   ```markdown
   ---
+  title: "Add login flow"
   status: open
   priority: 2
   deps: [design, ci]
@@ -143,34 +144,31 @@ never scanned on the hot path (see §3.5).
   closed-at: 2026-10-08T12:00:00Z
   archived: 2026-10-09T09:00:00Z
   ---
-  # Add login flow
-
-  Free prose. Headings below the title, lists, and fences are the author's own
-  Markdown and carry no meaning for the tracker.
+  Free prose. Headings, lists, and fences are the author's own Markdown and
+  carry no meaning for the tracker.
   ```
 
   (`closed-at` and `archived` are emitted only when set; see
   §5.3. The writer emits canonical field order and no comments.)
 
-- **The body has exactly two parts: a title heading and one prose block.** The
-  title is the first ATX heading; everything after it is the description. The
-  tracker reads no structure out of the description and never parses headings
-  inside it, so `## `, `### `, lists, and fences are all just text and are
-  stored verbatim. This is the *only* body structure, and it exists solely so
-  `f` can derive the display title (§3.1).
+- **The body is one prose block.** It carries no structure at all: the tracker
+  reads nothing out of it, and never parses headings, lists, or fences inside
+  it, so every line is stored verbatim. The title is a frontmatter field (§5.3),
+  never a body heading, precisely so that a `# ` line an author wrote inside a
+  shell fence can never be mistaken for the ticket title.
 - **Body writes are total and verbatim.** `add -d` and `edit -d` replace the
-  prose block, `edit --append` adds a paragraph to it, `edit --title` replaces
-  the heading, and `edit --body` replaces the whole body (a body left without a
-  title heading gets one from its ID). Nothing is scanned, so a write either
-  replaces or extends exactly what the flag names: the *replacing* writes
-  (`-d`, `--title`, `--body`) are idempotent — the same write twice leaves the
-  same bytes — while `--append`, by definition, adds its text once per call.
-  There are no section flags and no payload restrictions.
+  whole block, `edit --append` adds a paragraph to it, and `edit --body`
+  replaces the body as given. Nothing is scanned, so a write either replaces or
+  extends exactly what the flag names: the *replacing* writes (`-d`, `--body`)
+  are idempotent — the same write twice leaves the same bytes — while `--append`,
+  by definition, adds its text once per call. There are no section flags and no
+  payload restrictions. `--title` does not touch the body at all.
 
-- **The title is the body's first ATX heading, not a frontmatter field.**
-  `add` writes the title as `# <title>`; `edit --title` rewrites it in place. `f`
-  derives the display title from that heading, so no `title` key exists and the
-  index stays a pure function of the detail bytes.
+- **The title is a required frontmatter field.** `add` writes
+  `title: <title>`; `edit --title` replaces the value. The display title on an
+  index line is read from the field, so `f` stays a pure function of the detail
+  bytes without parsing prose, and there is no body-to-title derivation
+  anywhere.
 
 - **Identity is the filename stem, not a frontmatter field.** There is no
   `id:` key. `.tickets/login.md` *is* ticket `login`. This removes any
@@ -362,6 +360,7 @@ Core keys are **always emitted**, even when empty:
 
 | Field | Type | Values / default | Role |
 |---|---|---|---|
+| `title` | string | **required**, non-blank | display title on the index line |
 | `status` | enum | `open` (default) \| `in_progress` \| `closed` | state; drives views |
 | `priority` | int | `0`–`4`, default `2`, 0 highest | sort key (invisible in list) |
 | `deps` | id list | `[]` | blocking graph |
@@ -389,8 +388,16 @@ remain *preserved* on rewrite (§8.3) but are not first-class or filterable.
   list` → inline list. There is **no boolean type** in the schema or the subset.
 - Unknown/user keys are preserved on rewrite (§8.3) but not schema-validated or
   filterable.
-- Filenames (identity) and the title are **not** fields and never appear in
-  frontmatter; the title is the body's first ATX heading (§3.2).
+- Filenames (identity) are **not** fields and never appear in frontmatter; the
+  title is the required `title` key, not a body heading (§3.2).
+- **The title is required and non-blank.** `model.Validate` rejects a missing
+  title and a title that is empty or whitespace only, so the frozen subset's
+  `title: ""` and `title: "   "` are both errors rather than an empty display
+  title. Validation runs inside `frontmatter.Parse`, so every read path —
+  `show`, `f`, `doctor`, `edit` — fails loudly on a hand-written file that has
+  no title, and `store.WriteDetail` refuses to write one. The error names the
+  invariant: `title is required: frontmatter key `title` must be a
+  non-empty scalar`. There is no default title and no ID fallback.
 
 ### 5.4 Archive
 
@@ -680,7 +687,7 @@ needs only five lexical forms:
 | int | `-?[0-9]+` | `priority` |
 | bare scalar | `[A-Za-z0-9][A-Za-z0-9._:-]*` | timestamps, IDs |
 | inline list | `[` scalar (`,` scalar)* `]` | `deps`, `attachments` |
-| quoted string | `"…"` (backslash escapes) | any scalar needing it |
+| quoted string | `"…"` (backslash escapes) | `title`, any scalar needing it |
 
 The parser is therefore a flat line loop: split `key: rest` at the first colon,
 parse `rest` as one of the forms above. No indentation tracking, no nesting
@@ -690,10 +697,13 @@ stack, no state machine.
 - Frontmatter starts at byte 0 with `---\n` and ends at the next line that is
 exactly `---`.
 - The Markdown body after that fence may contain `---` freely (it is prose).
-- A file without a leading fence is treated as a body-only ticket with default
-  fields; it is never treated as a parse error that loses data.
+- A file without a leading fence has no frontmatter, so it has no title, so it
+  is a **missing-title error** (§5.3). It is never silently given a default
+  title, and it is never treated as a parse error that loses data: nothing is
+  written, and the error names the invariant.
 
 **Parser MUST reject (error, do not guess):**
+- a file with no title, an empty title, or a whitespace-only title (§5.3)
 - block scalars `|`, `>`; anchors/aliases `&`/`*`; merge keys `<<`
 - flow maps `{}`; any nested/indented map
 - multi-line arrays (lists are inline only)
@@ -703,8 +713,8 @@ exactly `---`.
   valid list form
 
 **Writer rules (canonical, byte-stable).**
-- Fixed field order; one field per line; lists inline `[a, b]`, **sorted** for
-  `deps`/`attachments` (§5.2).
+- Fixed field order (`title` first, then the rest of §5.3), one field per line;
+  lists inline `[a, b]`, **sorted** for `deps`/`attachments` (§5.2).
 - Quotes only when a scalar is not a safe bare token (e.g. a title with spaces),
   and always for a token ending in `:` (a trailing colon is invalid or ambiguous
   YAML under a reference parser).
@@ -764,6 +774,8 @@ schema-validated and never filterable.
     `no`/`true`, duplicate keys, tabs) each produce a clean error, never a
     silently coerced value.
   - Preservation test: unknown/user keys survive a parse→rewrite byte-for-byte.
+  - Required-title test: a missing, empty, or whitespace-only `title` errors on
+    every read path and names the invariant (§5.3); the write path refuses it.
   - Byte-stability test: `f` run twice produces no diff (idempotence, §3.1).
 - **Multi-process concurrency tests:**
   - N parallel `add` → all present exactly once, unique IDs, no lost lines.

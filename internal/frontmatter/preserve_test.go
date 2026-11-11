@@ -12,6 +12,7 @@ import (
 
 // unknownKeysDoc has three unknown keys interleaved with the known ones.
 var unknownKeysDoc = []byte("---\n" +
+	"title: unknown-keys\n" +
 	"status: open\n" +
 	"priority: 2\n" +
 	"deps: []\n" +

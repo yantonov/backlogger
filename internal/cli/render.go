@@ -1,91 +1,57 @@
 package cli
 
-import (
-	"strings"
-
-	"github.com/yantonov/backlogger/internal/model"
-)
+import "strings"
 
 // Document body layout.
 //
-// The tracker stores no `title` frontmatter field; the title is the body's first
-// ATX heading (spec 3.2), so `add` writes it as `# <title>` at the top of the
-// body. Everything below that heading is one opaque prose block: the tracker
-// never parses headings inside it, so a description is stored verbatim and a
-// `## ` line the writer supplied is just text. Both add and edit manipulate the
-// body through the helpers below so the layout stays consistent and is a pure
-// function of the bytes.
+// The body is one opaque prose block. The title is a required frontmatter field
+// (spec 5.3), so the body carries no structural element at all: the tracker
+// never parses headings inside it, which means a `# ` line inside a shell fence
+// is just text and can never be mistaken for the ticket title. Both add and edit
+// manipulate the body through the helpers below.
 
-// newBody renders a fresh ticket body: the title heading followed by the
-// description when one was given. The description is stored verbatim.
-func newBody(title, description string) []byte {
+// newBody renders a fresh ticket body: the description when one was given. The
+// description is stored verbatim.
+func newBody(description string) []byte {
 	var b strings.Builder
-	b.WriteString("# ")
-	b.WriteString(title)
-	b.WriteString("\n")
 	writeProse(&b, description)
 	return []byte(b.String())
 }
 
+// writeProse writes text as the body's single prose block.
 func writeProse(b *strings.Builder, text string) {
 	if text == "" {
 		return
 	}
-	b.WriteString("\n")
 	b.WriteString(strings.TrimRight(text, "\n"))
 	b.WriteString("\n")
 }
 
-// setBodyTitle replaces the title heading with `# title`, or prepends one when
-// the body has no title heading. Other content is preserved verbatim.
-func setBodyTitle(body []byte, title string) []byte {
-	lines := splitLines(body)
-	replacement := "# " + title
-	heading := model.TitleLine(body)
-	if heading < 0 {
-		out := []string{replacement}
-		out = append(out, lines...)
-		return joinLines(out)
+// setDescription replaces the whole body verbatim. An empty text empties it. The
+// payload is never scanned for headings, so any `# ` or `## ` line in it is
+// stored as text.
+func setDescription(text string) []byte {
+	if strings.TrimSpace(text) == "" {
+		return nil
 	}
-	lines[heading] = replacement
+	return []byte(strings.TrimRight(text, "\n") + "\n")
+}
+
+// appendProse adds text to the end of the body as a separate paragraph. The
+// payload is stored verbatim.
+func appendProse(body []byte, text string) []byte {
+	text = strings.TrimRight(text, "\n")
+	if text == "" {
+		return body
+	}
+	lines := append(splitLines(body), "", text)
 	return joinLines(lines)
 }
 
-// setDescription replaces the whole description verbatim, keeping the title
-// heading. An empty text removes the description. The payload is never scanned
-// for headings, so any `## ` line in it is stored as text.
-func setDescription(body []byte, text string) []byte {
-	lines := splitLines(body)
-	// Prose starts on the line after the title heading, or at the top when the
-	// body has none (spec 3.2).
-	start := 0
-	if heading := model.TitleLine(body); heading >= 0 {
-		start = heading + 1
-	}
-	out := append([]string(nil), lines[:start]...)
-	if strings.TrimSpace(text) != "" {
-		out = append(out, "", strings.TrimRight(text, "\n"))
-	}
-	return joinLines(out)
-}
-
-// appendProse adds text to the end of the body as a separate paragraph, keeping
-// the title and the existing description. The payload is stored verbatim.
-func appendProse(body []byte, text string) []byte {
-	lines := splitLines(body)
-	text = strings.TrimRight(text, "\n")
-	if text == "" {
-		return joinLines(lines)
-	}
-	return joinLines(append(append([]string(nil), lines...), "", text))
-}
-
 // splitLines splits body into lines, dropping a single trailing newline so the
-// result round-trips through joinLines. A CR is trimmed per line, so the result
-// matches the line indexes model.TitleLine reports.
+// result round-trips through joinLines.
 func splitLines(body []byte) []string {
-	s := string(body)
-	s = strings.TrimSuffix(s, "\n")
+	s := strings.TrimSuffix(string(body), "\n")
 	if s == "" {
 		return nil
 	}
@@ -103,13 +69,4 @@ func joinLines(lines []string) []byte {
 		return nil
 	}
 	return []byte(strings.Join(lines, "\n") + "\n")
-}
-
-// ensureHeading guarantees the body starts with an ATX heading. It is used
-// after edit operations that might otherwise leave a headingless body.
-func ensureHeading(body []byte, id string) []byte {
-	if model.Title(body) != "" {
-		return body
-	}
-	return setBodyTitle(body, id)
 }

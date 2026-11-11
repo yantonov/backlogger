@@ -24,9 +24,9 @@ type TxOptions struct {
 	Timeout time.Duration
 	// Reindex regenerates backlog.md. A nil value leaves the index untouched.
 	Reindex ReindexFunc
-	// Create makes Begin create .tickets/ when it is missing. Only the write
-	// commands that own state creation (add, migration) set this; every other
-	// mutation fails with guidance on a missing .tickets/ (spec 7.1).
+	// Create makes Begin create .tickets/ when it is missing. Only `add`, the
+	// one command that owns state creation, sets this; every other mutation
+	// fails with guidance on a missing .tickets/ (spec 7.1).
 	Create bool
 }
 

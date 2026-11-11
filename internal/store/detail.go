@@ -108,6 +108,11 @@ func (p *Paths) WriteDetail(meta *TicketMeta) error {
 	if meta == nil {
 		return errors.New("nil TicketMeta")
 	}
+	// The title invariant holds on the way out as well as on the way in, so no
+	// caller can write a detail file the reader would reject (spec 5.3).
+	if err := meta.Ticket.Validate(); err != nil {
+		return fmt.Errorf("refuse to write %s: %w", meta.ID, err)
+	}
 	path := meta.Path
 	if path == "" {
 		path = p.DetailPath(meta.ID, meta.Archived)

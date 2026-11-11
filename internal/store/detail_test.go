@@ -72,7 +72,7 @@ func TestReadDetail_ArchivedFile_FindsArchivedCopy(t *testing.T) {
 	if err := paths.EnsureArchive(); err != nil {
 		t.Fatal(err)
 	}
-	archived := "---\nstatus: closed\npriority: 2\ndeps: []\nattachments: []\ncreated: 2026-01-01T00:00:00Z\nupdated: 2026-01-01T00:00:00Z\n---\nbody\n"
+	archived := "---\ntitle: old\nstatus: closed\npriority: 2\ndeps: []\nattachments: []\ncreated: 2026-01-01T00:00:00Z\nupdated: 2026-01-01T00:00:00Z\n---\nbody\n"
 	if err := paths.WriteDetailBytes(paths.ArchivedPath("old"), []byte(archived)); err != nil {
 		t.Fatal(err)
 	}
@@ -195,5 +195,26 @@ func TestRequireTickets_MissingDir_FailsAndCreatesNothing(t *testing.T) {
 	}
 	if paths.TicketsExist() {
 		t.Fatal("RequireTickets created .tickets/")
+	}
+}
+
+// TestWriteDetail_MissingTitle_RefusesAndCreatesNoFile verifies the title
+// invariant holds on the way out as well as on the way in: no caller can write
+// a detail file the reader would reject (spec 5.3).
+func TestWriteDetail_MissingTitle_RefusesAndCreatesNoFile(t *testing.T) {
+	paths := store.NewPaths(t.TempDir())
+	if err := paths.EnsureTickets(); err != nil {
+		t.Fatal(err)
+	}
+	meta := newTicket("blank", "", time.Now())
+	meta.Ticket.Title = ""
+
+	err := paths.WriteDetail(meta)
+
+	if !errors.Is(err, model.ErrTitleMissing) {
+		t.Fatalf("WriteDetail = %v, want ErrTitleMissing", err)
+	}
+	if _, statErr := os.Stat(paths.ActivePath("blank")); !os.IsNotExist(statErr) {
+		t.Fatalf("a refused write left a file behind: %v", statErr)
 	}
 }
