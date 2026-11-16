@@ -68,8 +68,11 @@ fi
 TARGET_DIR="${HOME}/.local/bin"
 mkdir -p "${TARGET_DIR}"
 
-# Copy binary to the target directory
-cp "${BIN_PATH}" "${TARGET_DIR}/${APP_NAME}"
+# Copy binary to the target directory, then rename over the old one: on Windows
+# `cp` onto a running process's executable fails with "Device or resource busy",
+# while a rename succeeds because it unlinks the entry the process already holds.
+cp "${BIN_PATH}" "${TARGET_DIR}/${APP_NAME}.tmp"
+mv -f "${TARGET_DIR}/${APP_NAME}.tmp" "${TARGET_DIR}/${APP_NAME}"
 chmod +x "${TARGET_DIR}/${APP_NAME}"
 
 # Cleanup

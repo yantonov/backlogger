@@ -43,7 +43,8 @@ build:
 # install builds bl and copies it to ~/.local/bin. ## Build and install to ~/.local/bin
 install: build
 	@mkdir -p "$$HOME/.local/bin"
-	@cp target/bl "$$HOME/.local/bin/bl"
+	@cp target/bl "$$HOME/.local/bin/bl.tmp"
+	@mv -f "$$HOME/.local/bin/bl.tmp" "$$HOME/.local/bin/bl"
 	@echo "target dir: $$HOME/.local/bin"
 	@echo "bl installed successfully"
 
